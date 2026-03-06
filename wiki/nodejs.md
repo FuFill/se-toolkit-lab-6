@@ -5,15 +5,17 @@
 - [What is `Node.js`](#what-is-nodejs)
 - [`nvm`](#nvm)
   - [Install `nvm`](#install-nvm)
-  - [Install `Node.js`](#install-nodejs)
-  - [Check that `Node.js` works](#check-that-nodejs-works)
+- [Install `Node.js`](#install-nodejs)
+  - [Install `Node.js` using `nvm`](#install-nodejs-using-nvm)
+  - [Install `Node.js` using the commands from the official site](#install-nodejs-using-the-commands-from-the-official-site)
+- [Check that `Node.js` works](#check-that-nodejs-works)
 - [`npm`](#npm)
   - [`package.json`](#packagejson)
   - [`node_modules`](#node_modules)
-  - [Common `npm` commands](#common-npm-commands)
-    - [`npm install`](#npm-install)
-  - [Common `npm` actions](#common-npm-actions)
-    - [Install `Node.js` dependencies in the directory](#install-nodejs-dependencies-in-the-directory)
+- [Common `npm` commands](#common-npm-commands)
+  - [`npm install`](#npm-install)
+- [Common `npm` actions](#common-npm-actions)
+  - [Install `Node.js` dependencies in the directory](#install-nodejs-dependencies-in-the-directory)
 
 ## What is `Node.js`
 
@@ -27,15 +29,19 @@ Docs:
 
 `nvm` (Node Version Manager) is a tool for installing and switching between multiple versions of [`Node.js`](#what-is-nodejs).
 
+See [Install `nvm`](#install-nvm).
+
 Docs:
 
 - [`nvm` repository](https://github.com/nvm-sh/nvm)
 
 ### Install `nvm`
 
-1. [Check the current shell in the `VS Code Terminal`](./vs-code.md#check-the-current-shell-in-the-vs-code-terminal).
-2. Follow the [installation instructions](https://github.com/nvm-sh/nvm#installing-and-updating) for [`macOS`](./operating-system.md#macos) and [`Linux`](./operating-system.md#linux), even if you use [`Windows`](./operating-system.md#windows).
-3. To check that `nvm` is installed,
+1. Copy the single-line script from the [installation instructions](https://github.com/nvm-sh/nvm#installing-and-updating).
+
+2. [Run the copied script in the `VS Code Terminal`](./vs-code.md#run-a-command-in-the-vs-code-terminal).
+
+3. To check that [`nvm`](#nvm) is installed,
 
    [run in the `VS Code Terminal`](./vs-code.md#run-a-command-in-the-vs-code-terminal):
 
@@ -49,11 +55,16 @@ Docs:
    0.40.3
    ```
 
-### Install `Node.js`
+## Install `Node.js`
 
-1. [Install `nvm`](#install-nvm).
+- Method 1: [Install `Node.js` using `nvm`](#install-nodejs-using-nvm)
+- Method 2: [Install `Node.js` using the commands from the official site](#install-nodejs-using-the-commands-from-the-official-site)
 
-2. To install [`Node.js`](#what-is-nodejs),
+### Install `Node.js` using `nvm`
+
+1. [Install `nvm`](#install-nvm) if not yet installed.
+
+2. To install [`Node.js`](#what-is-nodejs) using [`nvm`](#nvm),
 
    [run in the `VS Code Terminal`](./vs-code.md#run-a-command-in-the-vs-code-terminal):
 
@@ -78,9 +89,33 @@ Docs:
 
 5. [Check that `Node.js` works](#check-that-nodejs-works).
 
-### Check that `Node.js` works
+### Install `Node.js` using the commands from the official site
 
-1. To check the `Node.js` version,
+1. Go to the [`Download Node.js` page](https://nodejs.org/en/download)
+
+2. Configure the instructions for a [terminal](./operating-system.md#terminal). If you use:
+
+   - `Linux`: Get `v25.x.x` for `Linux` using `<tool>` with `<package-manager>`
+   - `macOS`: Get `v25.x.x` for `macOS` using `<tool>` with `<package-manager>`
+   - `Windows`: Get `v25.x.x` for `Linux` using `<tool>` with `<package-manager>`
+
+   Choose `<tool>` and `<package-manager>` that you like.
+  
+   We recommend to replace:
+
+   - `<tool>` with `nvm`
+   - `<package-manager>` with `npm`
+
+3. To copy the instructions to clipboard,
+
+   Click `Copy to clipboard`.
+
+4. [Run the copied commands in the `VS Code Terminal`](./vs-code.md#run-a-command-in-the-vs-code-terminal).
+
+## Check that `Node.js` works
+
+1. [Check the current shell in the `VS Code Terminal`](./vs-code.md#check-the-current-shell-in-the-vs-code-terminal).
+2. To check the `Node.js` version,
 
    [run in the `VS Code Terminal`](./vs-code.md#run-a-command-in-the-vs-code-terminal):
 
@@ -88,7 +123,7 @@ Docs:
    node --version
    ```
 
-2. The output should be similar to this:
+3. The output should be similar to this:
 
    ```terminal
    v25.7.0
@@ -117,19 +152,21 @@ Docs:
 
 This [directory](./file-system.md#directory) is [`.gitignore`](./git.md#gitignore)-d.
 
-### Common `npm` commands
+## Common `npm` commands
 
-#### `npm install`
+- [`npm install`](#npm-install)
+
+### `npm install`
 
 This command [installs packages in the specified directory](#install-nodejs-dependencies-in-the-directory).
 
 Executes postinstall hooks.
 
-### Common `npm` actions
+## Common `npm` actions
 
 - [Install `Node.js` dependencies in the directory](#install-nodejs-dependencies-in-the-directory)
 
-#### Install `Node.js` dependencies in the directory
+### Install `Node.js` dependencies in the directory
 
 > [!NOTE]
 > See [`npm install`](#npm-install), [`package.json`](#packagejson), [directory](./file-system.md#directory).
