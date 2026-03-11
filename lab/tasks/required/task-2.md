@@ -1,339 +1,190 @@
-# Analytics Endpoints
+# Add Tools
 
-<h4>Time</h4>
+Extend your agent with tools so it can read files, list directories, and query your deployed API.
 
-~45 min
+## [Git workflow](../../../wiki/git-workflow.md)
 
-<h4>Purpose</h4>
+1. Create an issue titled `[Task] Add Tools`.
+2. Pull latest `main` from `origin` and `upstream`.
+3. Create a branch from `main` (e.g., `task/add-tools`).
+4. Work on the branch. Commit as you go using [conventional commits](https://www.conventionalcommits.org/) (e.g., `feat:`, `docs:`, `test:`).
+5. Push, create a PR to `main` in **your fork** (not upstream). Link the issue using a keyword (e.g., `Closes #2`).
+6. Get a review from your partner, merge (this closes the issue automatically), delete the branch.
 
-Implement four analytics endpoints using `SQL` aggregation queries and verify them with pre-written tests.
+## What you will build
 
-<h4>Context</h4>
+An agentic loop: the LLM can request tool calls, your agent executes them and feeds the results back, repeating until the LLM gives a final answer.
 
-The ETL pipeline from [Task 1](./task-1.md) has populated the database with check results. Now the team needs endpoints that aggregate this data for dashboards: score distributions, per-task pass rates, submission timelines, and per-group performance.
+```mermaid
+sequenceDiagram
+    actor User
+    participant CLI as agent.py
+    participant LLM as LLM API
+    participant Tools as Tools<br/>(files, API)
 
-Pre-written tests in [`backend/tests/unit/test_analytics.py`](../../../backend/tests/unit/test_analytics.py) define the expected behavior. Your job is to implement the endpoints so that all tests pass.
-
-<h4>Diagram</h4>
-
-<!-- TODO fill in this section -->
-
-<h4>Table of contents</h4>
-
-- [1. Steps](#1-steps)
-  - [1.1. Follow the `Git workflow`](#11-follow-the-git-workflow)
-  - [1.2. Create a `Lab Task` issue](#12-create-a-lab-task-issue)
-  - [1.3. Read the tests and stubs](#13-read-the-tests-and-stubs)
-  - [1.4. Run the tests (expect failures)](#14-run-the-tests-expect-failures)
-  - [1.5. Implement the endpoints](#15-implement-the-endpoints)
-    - [1.5.1. Scores histogram](#151-scores-histogram)
-    - [1.5.2. Pass rates](#152-pass-rates)
-    - [1.5.3. Timeline](#153-timeline)
-    - [1.5.4. Groups](#154-groups)
-  - [1.6. Run the tests (all should pass)](#16-run-the-tests-all-should-pass)
-  - [1.7. Commit and push your work](#17-commit-and-push-your-work)
-  - [1.8. Deploy and verify](#18-deploy-and-verify)
-  - [1.9. Finish the task](#19-finish-the-task)
-  - [1.10. Check the task using the autochecker](#110-check-the-task-using-the-autochecker)
-- [2. Acceptance criteria](#2-acceptance-criteria)
-
-## 1. Steps
-
-### 1.1. Follow the `Git workflow`
-
-Follow the [`Git workflow`](../../../wiki/git-workflow.md) to complete this task.
-
-### 1.2. Create a `Lab Task` issue
-
-Title: `[Task] Analytics Endpoints`
-
-### 1.3. Read the tests and stubs
-
-1. [Open the file](../../../wiki/vs-code.md#open-the-file):
-   [`backend/tests/unit/test_analytics.py`](../../../backend/tests/unit/test_analytics.py).
-
-   This file contains 17 tests organized into four test classes:
-
-   | Test class      | Endpoint                               | What it tests                             |
-   | --------------- | -------------------------------------- | ----------------------------------------- |
-   | `TestScores`    | `GET /analytics/scores?lab=lab-04`     | Score histogram with 4 buckets            |
-   | `TestPassRates` | `GET /analytics/pass-rates?lab=lab-04` | Average score and attempt count per task  |
-   | `TestTimeline`  | `GET /analytics/timeline?lab=lab-04`   | Submission count per day                  |
-   | `TestGroups`    | `GET /analytics/groups?lab=lab-04`     | Average score and student count per group |
-
-   > 🟦 **Note**
-   >
-   > The tests create an in-memory database with fixture data and send requests to the endpoints.
-   > You do not need to modify the tests — only the endpoint implementations.
-
-2. [Open the file](../../../wiki/vs-code.md#open-the-file):
-   [`backend/app/routers/analytics.py`](../../../backend/app/routers/analytics.py).
-
-   This file contains four endpoint stubs. Each endpoint currently raises `NotImplementedError`.
-
-   Read the TODO comments to understand the expected query logic.
-
-### 1.4. Run the tests (expect failures)
-
-1. [Check that the current directory is `se-toolkit-lab-5`](../../../wiki/shell.md#check-the-current-directory-is-directory-name).
-
-2. To copy the [`.env.tests.unit.example`](../../../.env.tests.unit.example) file to the [`.env.tests.unit.secret`](../../../wiki/dotenv-tests-unit-secret.md#what-is-envtestsunitsecret) file,
-
-   [run in the `VS Code Terminal`](../../../wiki/vs-code.md#run-a-command-in-the-vs-code-terminal):
-
-   ```terminal
-   cp .env.tests.unit.example .env.tests.unit.secret
-   ```
-
-3. To run the unit tests,
-
-   [run in the `VS Code Terminal`](../../../wiki/vs-code.md#run-a-command-in-the-vs-code-terminal):
-
-   ```terminal
-   uv run poe test-unit
-   ```
-
-   You should see 17 analytics tests failing and 3 interaction tests passing:
-
-   ```terminal
-   17 failed, 3 passed
-   ```
-
-   The failures are expected — the endpoints are not implemented yet.
-
-### 1.5. Implement the endpoints
-
-<!-- no toc -->
-- [1.5.1. Scores histogram](#151-scores-histogram)
-- [1.5.2. Pass rates](#152-pass-rates)
-- [1.5.3. Timeline](#153-timeline)
-- [1.5.4. Groups](#154-groups)
-
-You can implement the endpoints manually or use an AI coding agent. Each endpoint performs an `SQL` aggregation query.
-
-> [!TIP]
-> If using an AI agent, give it a prompt like:
->
-> "Read the tests in `backend/tests/unit/test_analytics.py` and the stubs in `backend/app/routers/analytics.py`. Implement all four endpoints to make the tests pass. Use `SQLAlchemy`/`SQLModel` queries."
->
-> The agent will have the test expectations and the TODO comments to guide it.
-
-The `lab` query parameter is a lab identifier like `"lab-04"`. Transform it to match the title format (e.g. `"lab-04"` → `"Lab 04"`) and find items whose title contains that string.
-
-#### 1.5.1. Scores histogram
-
-`GET /analytics/scores?lab=lab-04`
-
-Returns the distribution of scores in four buckets:
-
-```json
-[
-  {"bucket": "0-25", "count": 12},
-  {"bucket": "26-50", "count": 8},
-  {"bucket": "51-75", "count": 15},
-  {"bucket": "76-100", "count": 25}
-]
+    User->>CLI: python agent.py "..."
+    CLI->>LLM: messages + tool definitions
+    LLM-->>CLI: tool_calls: [{read_file, ...}]
+    CLI->>Tools: execute read_file(path)
+    Tools-->>CLI: file contents
+    CLI->>LLM: tool result
+    LLM-->>CLI: {"content": "The answer is..."}
+    CLI->>User: {"answer": "...", "tool_calls": [...]}
 ```
 
-Query logic:
+## CLI interface
 
-1. Find the lab item whose title contains the `lab` parameter (e.g. `"lab-04"` → match `"Lab 04"` in the title).
-2. Find all task items that belong to this lab (`parent_id = lab.id`).
-3. Query interactions for these tasks that have a `score`.
-4. Group scores into 4 buckets using `CASE WHEN` expressions.
-5. Always return all four buckets, even if the count is 0.
+Same as Task 1. The only change: `tool_calls` is now populated.
 
-#### 1.5.2. Pass rates
+**Input:**
 
-`GET /analytics/pass-rates?lab=lab-04`
-
-Returns per-task statistics:
-
-```json
-[
-  {"task": "Repository Setup", "avg_score": 92.3, "attempts": 150}
-]
+```bash
+python agent.py "What framework does the backend use?"
 ```
 
-Query logic:
-
-1. Find the lab item and its child task items.
-2. For each task, compute the average score (rounded to 1 decimal) and total number of interactions.
-3. Order by task title.
-
-#### 1.5.3. Timeline
-
-`GET /analytics/timeline?lab=lab-04`
-
-Returns submissions per day:
+**Output:**
 
 ```json
-[
-  {"date": "2026-02-28", "submissions": 45}
-]
+{
+  "answer": "The backend uses FastAPI.",
+  "tool_calls": [
+    {"tool": "read_file", "args": {"path": "backend/app/main.py"}, "result": "from fastapi import FastAPI..."}
+  ]
+}
 ```
 
-Query logic:
+**Rules (same as Task 1):**
 
-1. Find the lab item and its child task items.
-2. Group interactions by date (cast `created_at` to date).
-3. Count submissions per day.
-4. Order by date ascending.
+- `answer` and `tool_calls` fields are required.
+- Each entry in `tool_calls` must have `tool`, `args`, and `result`.
+- Only valid JSON goes to stdout. All debug/progress output goes to **stderr**.
+- The agent must respond within 60 seconds.
+- Maximum 10 tool calls per question.
+- Exit code 0 on success.
 
-#### 1.5.4. Groups
+## Required tools
 
-`GET /analytics/groups?lab=lab-04`
+You must implement three tools and register them as function-calling schemas in your LLM request.
 
-Returns per-group performance:
+### `read_file`
 
-```json
-[
-  {"group": "B23-CS-01", "avg_score": 78.5, "students": 25}
-]
+Read a file from the project repository.
+
+- **Parameters:** `path` (string) — relative path from project root.
+- **Returns:** file contents as a string, or an error message if the file doesn't exist.
+- **Security:** must not read files outside the project directory.
+
+### `list_files`
+
+List files and directories at a given path.
+
+- **Parameters:** `path` (string) — relative directory path from project root.
+- **Returns:** newline-separated listing of entries.
+- **Security:** must not list directories outside the project directory.
+
+### `query_api`
+
+Call your deployed backend API.
+
+- **Parameters:** `method` (string — GET, POST, etc.), `path` (string — e.g., `/items`), `body` (string, optional — JSON request body).
+- **Returns:** JSON string with `status_code` and `body`.
+- **Authentication:** use `LMS_API_KEY` from `.env.docker.secret` (the backend key, not the LLM key).
+
+## The agentic loop
+
+Your agent should follow this pattern:
+
+1. Send the user's question + tool definitions to the LLM.
+2. If the LLM responds with `tool_calls` → execute each tool, append results as `tool` role messages, go to step 1.
+3. If the LLM responds with a text message (no tool calls) → that's the final answer. Output JSON and exit.
+4. If you hit 10 tool calls → stop looping, use whatever answer you have.
+
+## Deliverables
+
+### 1. Plan (`plans/task-2.md`)
+
+Before writing code, create `plans/task-2.md`. Describe:
+
+- How you will define tool schemas (JSON format for the LLM).
+- How you will implement the agentic loop (detect tool calls, execute, feed back).
+- How you will handle security (path restriction, API authentication).
+
+Commit:
+
+```text
+docs: add implementation plan for tool calling
 ```
 
-Query logic:
+### 2. Tools and agentic loop (update `agent.py`)
 
-1. Find the lab item and its child task items.
-2. Join interactions with learners to get `student_group`.
-3. For each group, compute the average score (rounded to 1 decimal) and count of distinct learners.
-4. Order by group name.
+Update `agent.py` to:
 
-### 1.6. Run the tests (all should pass)
+- Define `read_file`, `list_files`, and `query_api` as function-calling schemas.
+- Implement the agentic loop (tool call → execute → feed result → repeat).
+- Record all tool calls in the `tool_calls` output array.
 
-1. To run the unit tests,
+Commit:
 
-   [run in the `VS Code Terminal`](../../../wiki/vs-code.md#run-a-command-in-the-vs-code-terminal):
+```text
+feat: add tool calling (read_file, list_files, query_api)
+```
 
-   ```terminal
-   uv run poe test-unit
-   ```
+### 3. Documentation (update `AGENT.md`)
 
-   All 20 tests should pass:
+Update `AGENT.md` to document:
 
-   ```terminal
-   ===================== 20 passed in X.XXs =====================
-   ```
+- **Tools:** what each tool does, its parameters, and security constraints.
+- **Agentic loop:** how the loop works (when it calls tools, when it stops).
+- **Configuration:** any new environment variables needed (e.g., API base URL for `query_api`).
 
-   <details><summary><b>Troubleshooting (click to open)</b></summary>
+Commit:
 
-   <h4>Some tests still fail</h4>
+```text
+docs: update agent documentation with tool calling
+```
 
-   Read the failing test name and assertion message carefully. The test names describe what they expect. For example, `test_scores_counts_are_correct` checks specific count values for each bucket.
+### 4. Tests (5 tests)
 
-   To run a single test class to focus on one endpoint,
+Add 5 regression tests that verify tool calling works. Each test should:
 
-   [run in the `VS Code Terminal`](../../../wiki/vs-code.md#run-a-command-in-the-vs-code-terminal):
+- Run `agent.py` as a subprocess with a question that requires a tool.
+- Parse the stdout JSON.
+- Check that `tool_calls` is non-empty and contains the expected tool name.
+- Check that the answer is reasonable.
 
-   ```terminal
-   uv run poe test-unit -k TestScores -v
-   ```
+Example test questions:
 
-   <h4><code>NotImplementedError</code></h4>
+- `"What framework does the backend use?"` → expects `read_file` in tool_calls.
+- `"What files are in the backend/app/routers/ directory?"` → expects `list_files` in tool_calls.
+- `"How many items are in the database?"` → expects `query_api` in tool_calls.
 
-   You haven't implemented the endpoint yet. Check that you replaced `raise NotImplementedError` with the query logic.
+Commit:
 
-   </details>
+```text
+test: add regression tests for tool calling
+```
 
-### 1.7. Commit and push your work
+### 5. Deployment
 
-1. [Commit](../../../wiki/git-workflow.md#commit-changes) your changes.
+Deploy the updated agent to your VM. The autochecker will SSH in and run questions that require tools.
 
-   Use this commit message:
+Make sure:
 
-   ```text
-   feat: implement analytics endpoints (scores, pass-rates, timeline, groups)
-   ```
+- The project repo is accessible to `agent.py` on the VM.
+- `LMS_API_KEY` is available for `query_api` to authenticate with the backend.
+- The backend is running and reachable from `agent.py`.
 
-2. To push your task branch,
-
-   [run in the `VS Code Terminal`](../../../wiki/vs-code.md#run-a-command-in-the-vs-code-terminal):
-
-   ```terminal
-   git push -u origin <task-branch>
-   ```
-
-   Replace [`<task-branch>`](../../../wiki/git-workflow.md#task-branch).
-
-### 1.8. Deploy and verify
-
-1. To navigate to the project directory on your VM,
-
-   [run in the `VS Code Terminal`](../../../wiki/vs-code.md#run-a-command-in-the-vs-code-terminal):
-
-   ```terminal
-   cd se-toolkit-lab-5
-   ```
-
-2. To pull your branch,
-
-   [run in the `VS Code Terminal`](../../../wiki/vs-code.md#run-a-command-in-the-vs-code-terminal):
-
-   ```terminal
-   git fetch origin && git checkout <task-branch> && git pull
-   ```
-
-   Replace [`<task-branch>`](../../../wiki/git-workflow.md#task-branch).
-
-3. To restart the services,
-
-   [run in the `VS Code Terminal`](../../../wiki/vs-code.md#run-a-command-in-the-vs-code-terminal):
-
-   ```terminal
-   docker compose --env-file .env.docker.secret up --build -d
-   ```
-
-4. [Open `Swagger UI`](../../../wiki/swagger.md#open-swagger-ui) at `http://<your-vm-ip-address>:42002/docs`.
-
-   Replace [`<your-vm-ip-address>`](../../../wiki/vm.md#your-vm-ip-address).
-
-5. [Authorize in `Swagger UI`](../../../wiki/swagger.md#authorize-in-swagger-ui) with your [`API_KEY`](../../../wiki/dotenv-docker-secret.md#api_key) in [`.env.docker.secret`](../../../wiki/dotenv-docker-secret.md#what-is-envdockersecret).
-
-6. Try each analytics endpoint with `lab=lab-04` (or any lab that has data).
-
-7. Verify that each returns a `200` response with a `JSON` array.
-
-8. To copy the [`.env.tests.e2e.example`](../../../.env.tests.e2e.example) file to the [`.env.tests.e2e.secret`](../../../wiki/dotenv-tests-e2e-secret.md#what-is-envtestse2esecret) file,
-
-   [run in the `VS Code Terminal`](../../../wiki/vs-code.md#run-a-command-in-the-vs-code-terminal):
-
-   ```terminal
-   cp .env.tests.e2e.example .env.tests.e2e.secret
-   ```
-
-9. [Open the file](../../../wiki/vs-code.md#open-the-file): `.env.tests.e2e.secret`.
-
-   Set the values:
-
-   - [`API_BASE_URL`](../../../wiki/dotenv-tests-e2e-secret.md#api_base_url) — the URL of your deployed API (e.g., `http://<your-vm-ip-address>:42002`; replace [`<your-vm-ip-address>`](../../../wiki/vm.md#your-vm-ip-address)).
-   - [`API_KEY`](../../../wiki/dotenv-tests-e2e-secret.md#api_key) — must match [`API_KEY`](../../../wiki/dotenv-docker-secret.md#api_key) in [`.env.docker.secret`](../../../wiki/dotenv-docker-secret.md#what-is-envdockersecret).
-
-10. To run the end-to-end tests against the deployed API,
-
-    [run in the `VS Code Terminal`](../../../wiki/vs-code.md#run-a-command-in-the-vs-code-terminal):
-
-    ```terminal
-    uv run poe test-e2e
-    ```
-
-### 1.9. Finish the task
-
-1. [Create a PR](../../../wiki/git-workflow.md#create-a-pr-to-the-main-branch-in-your-fork) with your changes.
-2. [Get a PR review](../../../wiki/git-workflow.md#get-a-pr-review) and complete the subsequent steps in the `Git workflow`.
-
-### 1.10. Check the task using the autochecker
-
-[Check the task using the autochecker `Telegram` bot](../../../wiki/autochecker.md#check-the-task-using-the-autochecker-bot).
-
----
-
-## 2. Acceptance criteria
+## Acceptance criteria
 
 - [ ] Issue has the correct title.
-- [ ] `uv run poe test-unit` passes all 20 tests (17 analytics + 3 interaction).
-- [ ] `GET /analytics/scores?lab=<lab>` returns `200` with a `JSON` array of 4 bucket objects.
-- [ ] `GET /analytics/pass-rates?lab=<lab>` returns `200` with a `JSON` array of task objects.
-- [ ] `GET /analytics/timeline?lab=<lab>` returns `200` with a `JSON` array of date objects.
-- [ ] `GET /analytics/groups?lab=<lab>` returns `200` with a `JSON` array of group objects.
-- [ ] PR is approved.
-- [ ] PR is merged.
+- [ ] `plans/task-2.md` exists with the implementation plan (committed before code).
+- [ ] `agent.py` defines `read_file`, `list_files`, and `query_api` as tool schemas.
+- [ ] The agentic loop executes tool calls and feeds results back to the LLM.
+- [ ] `tool_calls` in the output is populated when tools are used.
+- [ ] Tools do not access files outside the project directory.
+- [ ] `query_api` authenticates with `LMS_API_KEY`.
+- [ ] `AGENT.md` documents the tools and agentic loop.
+- [ ] 5 tool-calling regression tests exist and pass.
+- [ ] The agent works on the VM via SSH.
+- [ ] PR is approved and merged.
+- [ ] Issue is closed by the PR.
