@@ -124,8 +124,14 @@ Guidelines by question type:
    - Status codes without auth: `GET /items/` with `auth: false` to see 401 response.
    - Analytics: `GET /analytics/completion-rate?lab=lab-XX`
 4. Bug diagnosis: Use `query_api` to reproduce error, then `read_file` to find bug.
-5. Request lifecycle questions: Read `docker-compose.yml`, `Dockerfile` (root directory), `caddy/Caddyfile`, `backend/app/main.py` to trace request path.
-   After reading all files, provide a complete explanation of the request journey from browser → Caddy → FastAPI → database → back.
+   - For /analytics/completion-rate ZeroDivisionError: read `backend/app/routers/analytics.py` and find division without zero check.
+   - For /analytics/top-learners TypeError: read `backend/app/routers/analytics.py` and find `sorted()` with None values in avg_score.
+5. Request lifecycle questions: Read these files in order:
+   - `docker-compose.yml` - shows service connections
+   - `Dockerfile` (use path "Dockerfile" for root directory, NOT "backend/Dockerfile")
+   - `caddy/Caddyfile` - reverse proxy config
+   - `backend/app/main.py` - FastAPI entry point
+   After reading all files, provide a complete explanation: browser → Caddy → FastAPI → database → back.
 6. ETL idempotency questions: Read `backend/app/etl.py` and look for `external_id` checks.
    After reading the file, explain how duplicates are prevented.
 
@@ -209,8 +215,14 @@ def call_llm(messages, tools=None):
         )
         return response.choices[0].message
     except Exception as e:
-        print(f"Error calling LLM: {e}", file=sys.stderr)
-        sys.exit(1)
+        # Output valid JSON on error
+        output = {
+            "answer": f"Error calling LLM: {e}",
+            "source": "",
+            "tool_calls": [],
+        }
+        print(json.dumps(output, ensure_ascii=False))
+        sys.exit(0)
 
 def execute_tool_call(tool_call):
     """Execute a single tool call and return the result."""
@@ -244,8 +256,12 @@ def extract_source_and_answer(final_message):
     return answer, source
 
 def main():
+    # Reconfigure stdout to support UTF-8 on Windows (must be done early)
+    if hasattr(sys.stdout, 'reconfigure'):
+        sys.stdout.reconfigure(encoding='utf-8')
+    
     if len(sys.argv) != 2:
-        print("Usage: uv run agent.py \"<question>\"", file=sys.stderr)
+        print(json.dumps({"error": "Usage: uv run agent.py \"<question>\""}), ensure_ascii=False)
         sys.exit(1)
 
     question = sys.argv[1]
@@ -272,8 +288,6 @@ def main():
                 "source": source,
                 "tool_calls": tool_calls_log,
             }
-            # Reconfigure stdout to support UTF-8 on Windows
-            sys.stdout.reconfigure(encoding='utf-8')
             print(json.dumps(output, ensure_ascii=False))
             sys.exit(0)
 
@@ -293,9 +307,14 @@ def main():
                 "content": entry["result"],
             })
 
-    # If we exit the loop, we hit max iterations
-    print("Error: Exceeded maximum tool calls (10).", file=sys.stderr)
-    sys.exit(1)
+    # If we exit the loop, we hit max iterations - still output what we have
+    output = {
+        "answer": "Exceeded maximum tool call iterations.",
+        "source": "",
+        "tool_calls": tool_calls_log,
+    }
+    print(json.dumps(output, ensure_ascii=False))
+    sys.exit(0)
 
 if __name__ == "__main__":
     main()
