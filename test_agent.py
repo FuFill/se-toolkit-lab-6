@@ -61,3 +61,42 @@ def test_list_files_question():
     # The answer should mention some files (e.g., git-workflow.md)
     assert any(filename in output["answer"] for filename in ["git-workflow.md", "qwen.md", "github.md"]), \
         "Answer does not mention any wiki files"
+
+
+def test_framework_question():
+    """Agent should use read_file on backend source code to find the web framework."""
+    question = "What Python web framework does this project's backend use?"
+    result = subprocess.run(
+        [sys.executable, "agent.py", question],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, f"Agent failed: {result.stderr}"
+    output = json.loads(result.stdout)
+    # Check that tool_calls contains read_file on backend source
+    read_file_calls = [
+        tc for tc in output["tool_calls"]
+        if tc["tool"] == "read_file" and "backend" in tc["args"].get("path", "").lower()
+    ]
+    assert len(read_file_calls) > 0, "Expected read_file of backend source code"
+    # Answer should mention FastAPI
+    assert "fastapi" in output["answer"].lower(), f"Answer should mention FastAPI: {output['answer']}"
+
+
+def test_api_item_count():
+    """Agent should use query_api to get item count from the database."""
+    question = "How many items are in the database?"
+    result = subprocess.run(
+        [sys.executable, "agent.py", question],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, f"Agent failed: {result.stderr}"
+    output = json.loads(result.stdout)
+    # Check that tool_calls contains query_api
+    query_calls = [tc for tc in output["tool_calls"] if tc["tool"] == "query_api"]
+    assert len(query_calls) > 0, "Expected query_api tool call"
+    # Answer should contain a number
+    import re
+    numbers = re.findall(r"\d+", output["answer"])
+    assert len(numbers) > 0, f"Answer should contain a number: {output['answer']}"
